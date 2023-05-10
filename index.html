@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>GHG emissions dashboard</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <!-- load leaflet.js -->
+    <!-- load CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+
+    <!-- load JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <!-- load VectorGrid extension -->
+    <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script> 
+    <!-- load Geotiff extension -->
+    <!-- <script src="https://unpkg.com/georaster"></script> -->
+    <script src="https://unpkg.com/chroma-js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+    <!-- <script src="leaflet-bubble.js"></script> -->
+    <!-- <script type="text/javascript" src="vis.js"></script> -->
+
+    <style>
+        body {
+            height: 100vh;
+            width:100vw;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            display: grid; 
+            width: 100%;
+            height: 100%;
+            grid-template-columns: 2fr 1fr; 
+            grid-template-rows:  1fr 1fr; 
+            gap: 0fr 0fr; 
+            grid-template-areas: 
+                "map-container piechart-container"
+                "map-container linechart-container"; 
+        }
+        .map-container {
+        grid-area: map-container;
+        height: 1fr; /* Adjust the height as needed */
+        background-color: #f2f2f2; /* Set a background color for the map container */
+        }
+
+        .piechart-container {
+        grid-area: piechart-container;
+        height: 1fr; /* Adjust the height as needed */
+        background-color: #f2f2f2; /* Set a background color for the pie chart container */
+        }
+
+        .linechart-container {
+        grid-area: linechart-container;
+        height: 1fr; /* Adjust the height as needed */
+        background-color: #f2f2f2; /* Set a background color for the line chart container */
+        }
+        
+        .info {
+            padding: 6px 8px;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            background: white;
+            background: rgba(255,255,255,0.8);
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+        }
+        .info h4 {
+            margin: 0 0 5px;
+            color: #777;
+        }
+        .legend {
+            line-height: 18px;
+            color: #555;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+
+        <!-- div containing map -->
+        <!-- specification of leaflet map -->
+
+
+<body>
+
+<div class="container">
+    <div class="map-container">
+        <div id="map" style="height: 100%; width: 100%;"></div>
+    </div>
+    <div class="piechart-container">
+        <canvas id="pieChart" style="height: 100%; width: 100%;"></canvas>
+    </div>
+    <div class="linechart-container">
+        <canvas id="lineChart" style="height: 100%; width: 100%;"></canvas>
+    </div>
+</div>
+
+
+<script>
+// create map
+var map = L.map('map', {
+    center: [48.8566, 2.3522],
+    minZoom: 2,
+    maxZoom: 7,
+    zoomControl: true,
+    zoom: 4,
+});
+
+// other map specifications
+
+// add background basemap
+var mapBaseLayer = L.tileLayer(
+'https://api.mapbox.com/styles/v1/abanquet/clh69sx2g00rh01qy2aat9rtm/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoiYWJhbnF1ZXQiLCJhIjoiY2tuZWR0czllMXFsOTJ4bXI0YTJkYXh0NyJ9.5fHw32nqi29CNuM4oEF3AA', 
+).addTo(map);
+mapBaseLayer.addTo(map);
+
+var scale = chroma.scale(['#00429d', '#3e67ae', '#618fbf', '#85b7ce', '#b1dfdb', '#ffffe0', '#ffcab9', '#fd9291', '#e75d6f', '#c52a52', '#93003a'])
+
+function getColor(d, valMin, valMax) {
+var scaledValue = (d - valMin) / (valMax - valMin);
+var color = scale(scaledValue).hex();
+return color;
+};
+// function setRadiusCoefZoom(zoom) {
+//   // calculate the radius based on the current zoom level
+//   var radius;
+//   if (zoom <= 4) {
+//     coef = 1;
+//   } else if (zoom <= 6) {
+//     coef = 2;
+//   } else {
+//     coef = 3;
+//   }
+//   return coef;
+// };
+
+function getRadius(d, valMin, valMax, radiusMinRef, radiusMaxRef) {
+d0 = Math.max(d, valMin);
+d0 = Math.min(d, valMax);
+var scaledValue = (d0 - valMin) / (valMax - valMin);
+var radius = (scaledValue * (radiusMaxRef - radiusMinRef) + radiusMinRef);
+return radius;
+};
+
+
+var pieChart;
+var lineChart;
+
+// Add click event listener to the markers
+function pieChartClick(e) {
+  // Get the data for the clicked market from the GeoJSON layer
+  
+  var ghgData = e.target.feature.properties;
+
+  // Create the data array for the pie chart
+  var data = [
+    { label: 'Power', value: Math.round(ghgData.Power * 10) / 10},
+    { label: 'Transport', value: Math.round(ghgData.Transport* 10) /  10 },
+    { label: 'Industry', value: Math.round(ghgData.Industry* 10) /  10 },
+    { label: 'Buildings', value: Math.round(ghgData.Buildings* 10) /  10 },
+    { label: 'Agriculture', value: Math.round(ghgData.Agriculture* 10) /  10 },
+    { label: 'Waste', value: Math.round(ghgData.Waste* 10) /  10 },
+    { label: 'Other', value: Math.round(ghgData.Other* 10) /  10 },
+    // Add more products as needed
+  ];
+  console.log('data', data);
+  
+
+  // If the chart has already been created, destroy it before creating a new one
+  if (pieChart) {
+    pieChart.destroy();
+  }
+
+  // Create a new pie chart using Chart.js
+  pieChart = new Chart("pieChart", {
+    type: "doughnut",
+    data: {
+        labels: data.map(function(d) { return d.label; }),
+        datasets: [{
+        backgroundColor: ['cornflowerblue', 'lightslategray', 'blueviolet', 'indianred', 'darkolivegreen', 'saddlebrown', 'silver'],
+        data: data.map(function(d) { return d.value; })
+        }]
+    },
+    options: {
+        title: {
+        display: true,
+        text: "Emissions by sector (2018)"
+        },
+        aspectRatio:1
+    }
+    
+  });
+};
+
+function lineChartClick(e) {
+  // Get the data for the clicked market from the GeoJSON layer
+  
+  var ghgData = e.target.feature.properties;
+
+  // Create the data array for the pie chart
+  var xValues = [1981, 1982, 1983, 1984, 1985, 1986, 1987, 1988, 
+    1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
+    1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
+    2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,
+    2013, 2014, 2015, 2016, 2017, 2018];
+  var yValues = xValues.map(function(val) {
+  return ghgData[String(val)];
+});
+  
+
+  // If the chart has already been created, destroy it before creating a new one
+  if (lineChart) {
+    lineChart.destroy();
+  }
+
+  // Create a new pie chart using Chart.js
+  lineChart = new Chart("lineChart", {
+    type: "line",
+    data: {
+        labels: xValues,
+        datasets: [{
+            fill: false,
+            pointRadius: 1,
+            borderColor: "rgba(255,0,0,0.5)",
+            data: yValues
+            }]
+        },
+    options: {
+        legend: {display: false},
+        title: {
+        display: true,
+        text: "Emissions per capita 1981-2018"
+        },
+        aspectRatio:1
+    }
+    
+  });
+};
+
+fetch("data/ghg_emis_sect.geojson")
+    .then(response => response.json()) 
+    .then(function(data) {
+        // Create a Leaflet GeoJSON layer
+        var ghgLayer = L.geoJSON(data, {
+            pointToLayer: function (feature, latlng) {
+                // Create a bubble marker for each point
+                return L.circleMarker(latlng, {
+                    radius:  getRadius(feature.properties['Emissions per capita (t CO2 eq/cap)'], 0, 20, 5, 20),
+                    fillColor: getColor(feature.properties['Emission growth 1990-2018'], -100, 100),
+                    color: "#000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+            },
+            onEachFeature: function (feature, layer) {
+                var tl1name = feature.properties.tl1_name_e;
+                var tl2name = feature.properties.name_en;
+                var emisgr = feature.properties["Emission growth 1990-2018"];
+                var emisgrct = feature.properties["Emission growth country 1990-2018"];
+                var emisgroecd = feature.properties["Emission growth OECD 1990-2018"];
+                var emiscap = feature.properties['Emissions per capita (t CO2 eq/cap)'];
+                var emiscapct = feature.properties['Emissions per capita 2018 country (t CO2 eq/cap)'];
+                var emiscapoecd = feature.properties['Emissions per capita 2018 OECD (t CO2 eq/cap)'];
+                // var emisgrinfo = `<b>Emissions growth 1990-2018</b>: ${Math.round(emisgr * 10) / 10} % <br> <b>Emissions growth country 1990-2018</b>: ${Math.round(emisgrct * 10) / 10} % <br> <b>Emissions growth OECD 1990-2018</b>: ${Math.round(emisgroecd * 10) / 10} %`
+                // var emiscapinfo = `<b>Emissions per capita in 2018</b>: ${Math.round(emiscap * 10) / 10} t CO2 eq/cap <br> <b>${tl1name} emissions per capita in 2018</b>: ${Math.round(emiscapct * 10) / 10} t CO2 eq/cap <br> <b>OECD emissions per capita in 2018</b>: ${Math.round(emiscapoecd * 10) / 10} t CO2 eq/cap`
+                var emisgrinfo = `<b>Emissions growth 1990-2018</b> <br> <table><tr><td>${tl2name}</td><td>${Math.round(emisgr * 10) / 10} %</td></tr> <tr><td>${tl1name}</td><td>${Math.round(emisgrct * 10) / 10} %</td></tr></td></tr> <tr><td>OECD</td><td>${Math.round(emisgroecd * 10) / 10} %</td></tr></table>`
+                var emiscapinfo = `<b>Emissions per capita in 2018</b> <br> <table><tr><td>${tl2name}</td><td>${Math.round(emiscap * 10) / 10} t CO2-eq/cap.</td></tr> <tr><td>${tl1name}</td><td>${Math.round(emiscapct * 10) / 10} t CO2-eq/cap.</td></tr></td></tr> <tr><td>OECD</td><td>${Math.round(emiscapoecd * 10) / 10} t CO2-eq/cap.</td></tr></table>`
+                
+                layer.bindPopup(`<b>${tl2name}</b> <br> ${tl1name} <br><br> ${emisgrinfo} <br> ${emiscapinfo}` );
+                layer.on("click", pieChartClick);
+                layer.on("click", lineChartClick);
+            }
+        
+        });
+
+    // Add the GeoJSON layer to the map
+    ghgLayer.addTo(map)
+    });
+
+var mapBaseLabelsLayer = L.tileLayer(
+'https://api.mapbox.com/styles/v1/abanquet/clhdy2nnz013p01r07unnfrol/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoiYWJhbnF1ZXQiLCJhIjoiY2tuZWR0czllMXFsOTJ4bXI0YTJkYXh0NyJ9.5fHw32nqi29CNuM4oEF3AA', 
+);
+mapBaseLabelsLayer.setZIndex(10).addTo(map);
+
+// Define a global variable for the chart
+
+
+</script>
+
+</body>
+
+</html>
+
+
+
