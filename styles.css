@@ -1,0 +1,107 @@
+body {
+    height: 100vh;
+    width:100vw;
+    margin: 0;
+    padding: 0;
+    font-family: "Avenir Next";
+    font-size: 14px;
+}
+header {
+    background:#302ea3;
+    color:white;
+    margin: 0;
+    padding: 10px;
+    font-family: "Avenir Next";
+    font-size: 28px;
+}
+.container {
+    display: grid; 
+    width: 100%;
+    height: 100%;
+    grid-template-columns: 70% 30%; 
+    grid-template-rows:  10% 45% 45%; 
+    gap: 0fr 0fr; 
+    grid-template-areas: 
+        "map-container tlname-container"
+        "map-container piechart-container"
+        "map-container linechart-container"; 
+}
+.map-container {
+grid-area: map-container;
+width: 100%;
+height: 100%; /* Adjust the height as needed */
+background-color: #f2f2f2; /* Set a background color for the map container */
+}
+.tlname-container {
+    grid-area: tlname-container;
+    width: 100%; 
+    height: 100%; /* Adjust the height as needed */
+    background-color: #f2f2f2; /* Set a background color for the pie chart container */
+    }
+.piechart-container {
+grid-area: piechart-container;
+width: 100%; 
+height: 100%; /* Adjust the height as needed */
+background-color: #f2f2f2; /* Set a background color for the pie chart container */
+}
+
+.linechart-container {
+grid-area: linechart-container;
+width: 100%;
+height: 100%; /* Adjust the height as needed */
+background-color: #f2f2f2; /* Set a background color for the line chart container */
+}
+
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.info h4 {
+    margin: 0 0 5px;
+    color: #777;
+}
+.legend {
+    line-height: 18px;
+    color: #555;
+}
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+
+.tabs {
+  overflow: hidden;
+}
+
+.tab {
+  background-color: #f1f1f1;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 8px 16px;
+  transition: background-color 0.3s;
+}
+
+.tab:hover {
+  background-color: #ddd;
+}
+
+.tab.active {
+  background-color: #ccc;
+}
+
+.tab-content {
+  display: block;
+  padding: 16px;
+  border: 1px solid #ccc;
+  height: 85%;
+}
+
+ 
